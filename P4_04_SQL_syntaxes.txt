@@ -1,0 +1,183 @@
+-------------------------------
+-- create ‘tbl_customers’ table
+-------------------------------
+CREATE TABLE `ExpressFood`.`tbl_customers`
+( 
+`customer_id` INT
+(11) NOT NULL AUTO_INCREMENT ,  
+`customer_name` VARCHAR
+(100) NOT NULL ,  
+`customer_phone` INT
+(11) NOT NULL ,  
+`customer_email` VARCHAR
+(50) NOT NULL ,    
+PRIMARY KEY
+(`customer_id`)) ENGINE = InnoDB;
+
+-------------------------------
+-- create ‘tbl_addresses’ table
+-------------------------------
+CREATE TABLE `ExpressFood`.`tbl_addresses`
+(
+`address_id` INT
+(11) NOT NULL AUTO_INCREMENT ,  
+`customer_id` INT
+(11) NOT NULL ,  
+`address_city` VARCHAR
+(50) NOT NULL ,  
+`address_street-name` VARCHAR
+(50) NOT NULL ,  
+`address_street-number` INT
+(11) NOT NULL ,    
+PRIMARY KEY
+(`address_id`)) ENGINE = InnoDB;
+
+-- index ‘customer_id’ - prep to set as foreign key
+ALTER TABLE `tbl_addresses`
+ADD INDEX
+( `customer_id`);
+
+--------------------------------------
+-- add customer to the `tbl_customers`
+--------------------------------------
+INSERT INTO `tbl_customers` (`
+customer_id`, `customer_name`, `customer_phone`, `customer_email`) 
+VALUES
+(NULL, 'Charlie Brown', '455321098', 'charlie.brown@gmail.com');
+
+-- add address of the customer to the `tbl_addreses` table
+INSERT INTO `tbl_addresses` (`
+address_id`, `customer_id`, `address_city`, `address_street-name`, `address_street-number`) 
+VALUES
+(NULL, '1', 'Barcelona', 'Via Laietana', '41');
+
+-----------------------------
+-- corect column naming error
+-----------------------------
+ALTER TABLE `tbl_addresses` 
+CHANGE `address_street-name` `address_street_name` 
+VARCHAR
+(50) CHARACTER
+SET utf8mb4
+COLLATE utf8mb4_general_ci NOT NULL, 
+CHANGE `address_street-number` `address_street_number` INT
+(11) NOT NULL;
+
+-------------------------------
+-- create customer details view
+-------------------------------
+
+CREATE VIEW Customers_Details AS
+    SELECT
+        cst.customer_id AS Customer_No,
+        cst.customer_name AS Name,
+        cst.customer_phone AS Phone,
+        cst.customer_email AS Email,
+        addr.address_city AS City,
+        addr.address_street_name AS Street_Name,
+        addr.address_street_number AS Street_Number
+    FROM tbl_customers as cst
+        INNER JOIN tbl_addresses AS addr
+        ON cst.customer_id=addr.customer_id;
+
+----------------------------
+-- create order details view
+----------------------------
+
+CREATE VIEW Orders
+AS
+    SELECT
+        ord.order_id AS No,
+        ord.order_date_time AS Date,
+        cs.customer_name AS Custumer_Name,
+        cs.customer_phone AS Customer_Phone,
+        op.product_qty AS Quantity,
+        prod.product_name AS Product_Name,
+        op.product_qty*prod.product_price AS Price,
+        addr.address_city AS City,
+        addr.address_street_name AS Street_Name,
+        addr.address_street_number AS Street_Number
+    FROM tbl_orders AS ord
+        INNER JOIN tbl_customers AS cs
+        ON ord.customer_id=cs.customer_id
+        INNER JOIN tbl_addresses AS addr
+        ON addr.customer_id=cs.customer_id
+        INNER JOIN tbl_products_order AS op
+        ON ord.order_id=op.order_id
+        INNER JOIN tbl_menu_products AS prod
+        ON op.product_id=prod.product_id;
+
+-------------------------
+-- create deliveries view
+-------------------------
+CREATE VIEW Deliveries
+AS
+    SELECT
+        ord.order_date_time AS Order_Date,
+        dlv.delivery_id AS Delivery_No,
+        dlv.order_id AS Order_No,
+        bill.bill_id AS Bill_No,
+        bike.biker_name AS Biker_Name,
+        bike.biker_phone AS Biker_Phone,
+        cs.customer_name AS Customer_Name,
+        cs.customer_phone AS Custoimer_Phone,
+        addr.address_city AS City,
+        addr.address_street_name AS Street_Name,
+        addr.address_street_number AS Street_Number
+    FROM tbl_deliveries AS dlv
+        INNER JOIN tbl_orders AS ord
+        ON dlv.order_id=ord.order_id
+        INNER JOIN tbl_delivery_biker AS bike
+        ON dlv.biker_id=bike.biker_id
+        INNER JOIN tbl_bills AS bill
+        ON dlv.bill_id=bill.bill_id
+        INNER JOIN tbl_customers AS cs
+        ON ord.customer_id=cs.customer_id
+        INNER JOIN tbl_addresses AS addr
+        ON cs.customer_id=addr.customer_id;
+
+---------------------------------------------
+-- create total spent history per client view
+---------------------------------------------
+
+CREATE VIEW Customer_Total_Spent_History 
+AS
+    SELECT
+	TOTAL.cus AS Customer,
+	TOTAL.X AS TOTAL
+	FROM
+	(SELECT 
+ 		Orders.Custumer_Name, SUM(Price) AS X,
+		Orders.Custumer_Name AS cus
+ 		FROM Orders GROUP BY Orders.No) 
+		AS TOTAL
+
+---------------------------------
+-- create orders with total value
+---------------------------------
+
+
+CREATE VIEW Orders_Total AS 
+SELECT
+    P.n AS No,
+    P.c AS Customer_Name,
+    P.X AS Total
+FROM 
+(SELECT Orders.Custumer_Name, SUM(Price) AS X,
+        Orders.Custumer_Name AS c,
+        Orders.No AS n
+        FROM Orders GROUP BY Orders.No) AS P
+
+----------------------------
+-- create total revenue view
+----------------------------
+
+
+CREATE VIEW Total_Revenue 
+AS
+SELECT
+    T.X AS TOTAL_Revenue
+FROM
+(SELECT 
+    Orders_Total.Total, SUM(Total) AS X
+    FROM Orders_Total) AS T
